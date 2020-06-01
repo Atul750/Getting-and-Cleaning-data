@@ -1,0 +1,41 @@
+getwd()
+rm(list = ls())
+library(reshape2)
+
+# Load activity labels + features
+activityLabels <- read.table("UCI HAR Dataset/activity_labels.txt")
+activityLabels[,2] <- as.character(activityLabels[,2])
+features <- read.table("UCI HAR Dataset/features.txt")
+features[,2] <- as.character(features[,2])
+
+# Extracting the data on mean and standard deviation
+featuresWanted <- grep(".*mean.*|.*std.*", features[,2])
+featuresWanted.names <- features[featuresWanted,2]
+featuresWanted.names = gsub('-mean', 'Mean', featuresWanted.names)
+featuresWanted.names = gsub('-std', 'Std', featuresWanted.names)
+featuresWanted.names <- gsub('[-()]', '', featuresWanted.names)
+
+
+# Loading the datasets within the folder
+X_train <- read.table("UCI HAR Dataset/train/X_train.txt")[featuresWanted]
+Y_train <- read.table("UCI HAR Dataset/train/Y_train.txt")
+Subject_train <- read.table("UCI HAR Dataset/train/subject_train.txt")
+X_train <- cbind(Subject_train, Y_train, X_train)
+
+X_test <- read.table("UCI HAR Dataset/test/X_test.txt")[featuresWanted]
+Y_test <- read.table("UCI HAR Dataset/test/Y_test.txt")
+Subject_test <- read.table("UCI HAR Dataset/test/subject_test.txt")
+X_test <- cbind(Subject_test, Y_test, X_test)
+
+# we will merge all the datasets and add labels
+Final <- rbind(X_train, X_test)
+colnames(Final) <- c("subject", "activity", featuresWanted.names)
+
+# We will convert activities & subjects into factors
+Final$activity <- factor(Final$activity, levels = activityLabels[,1], labels = activityLabels[,2])
+Final$subject <- as.factor(Final$subject)
+
+Final.melted <- melt(Final, id = c("subject", "activity"))
+Final.mean <- dcast(Final.melted, subject + activity ~ variable, mean)
+
+write.table(Final.mean, "tidy.txt", row.names = FALSE, quote = FALSE)
